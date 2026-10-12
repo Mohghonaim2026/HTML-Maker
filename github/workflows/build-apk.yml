@@ -1,1 +1,52 @@
+name: Build APK
 
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "android/**"
+      - ".github/workflows/build-apk.yml"
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "رابط التطبيق المنشور (اختياري - اتركه فاضي لو هتغيره من جوه التطبيق)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Set app URL (optional input)
+        if: ${{ inputs.app_url != '' }}
+        run: |
+          sed -i 's|<string name="start_url">.*</string>|<string name="start_url">${{ inputs.app_url }}</string>|' android/app/src/main/res/values/strings.xml
+          cat android/app/src/main/res/values/strings.xml
+
+      - name: Build debug APK
+        run: |
+          cd android
+          gradle assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-maker-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
